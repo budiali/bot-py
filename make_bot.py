@@ -23,10 +23,11 @@ TOKEN=os.getenv('TELEGRAM_BOT_TOKEN')
 ECHO,
 END_CONV,
 LIST_TICKET,
+CHECK_TICKET,
 BACK_BUTTON,
-) = map(chr, range(4))
+) = map(chr, range(5))
 
-SELECTING_ACTION = map(chr, range(4,5))
+SELECTING_ACTION = map(chr, range(5,6))
 
 async def initialize_user_data(update: Update, context: CallbackContext) -> str:
     if update.message:
@@ -66,6 +67,7 @@ async def main_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     logger.info(f"User {update.effective_message.from_user.username} choose main button")
     button = [
         [InlineKeyboardButton("Approval Troubleshoot Ticket", callback_data=str(LIST_TICKET))],
+        [InlineKeyboardButton("Check Troubleshoot Ticket", callback_data=str(CHECK_TICKET))],
         [InlineKeyboardButton("Done", callback_data=str(END_CONV))]
     ]
     keyboard=InlineKeyboardMarkup(button)
@@ -91,6 +93,20 @@ async def list_ticket(update: Update, context: CallbackContext) -> str:
 
     return SELECTING_ACTION
 
+async def check_ticket(update:Update, context:ContextTypes.DEFAULT_TYPE) -> str:
+    query = update.callback_query
+    await query.answer()
+    await initialize_user_data(update,context)
+    user_dict = context.user_data['user_dict']
+    # logger.info(f"Context Data  Send Anim >>> {user_dict['chat_id']}")
+    chat_id = user_dict['chat_id']
+    
+    text_option=f"Anda memilih kategori: *Check Troubleshoot Ticket*"
+    await query.message.reply_text(text=text_option, parse_mode="Markdown")
+    await context.bot.delete_message(chat_id=query.message.chat_id, message_id=query.message.message_id)
+    await send_animation(update, context)
+
+
 async def back_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
@@ -108,8 +124,7 @@ async def end_conv(update: Update, context:ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
     await query.answer()
     await query.edit_message_text("Percakapan dibatalkan.")
-    await send_animation(update, context)
-    # return END
+    return END
 
 def create_random_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
     ticket_numbers = gen.data_tickets()
@@ -124,8 +139,13 @@ async def send_animation(update: Update, context:ContextTypes.DEFAULT_TYPE) -> s
     # logger.info(f"Context Data  Send Anim >>> {user_dict['chat_id']}")
 
     chat_id = user_dict['chat_id']
+    button = [
+        [InlineKeyboardButton("Back", callback_data=str(BACK_BUTTON))]
+    ]
+    keyboard=InlineKeyboardMarkup(button)
     
-    await context.bot.send_animation(chat_id=chat_id, animation='https://cdnl.iconscout.com/lottie/premium/preview-watermark/website-repair-animation-download-in-lottie-json-gif-static-svg-file-formats--under-logo-web-configuration-maintenance-development-construction-pack-design-animations-6516026.mp4')
+    await context.bot.send_animation(chat_id=chat_id, animation='https://cdnl.iconscout.com/lottie/premium/preview-watermark/website-repair-animation-download-in-lottie-json-gif-static-svg-file-formats--under-logo-web-configuration-maintenance-development-construction-pack-design-animations-6516026.mp4', reply_markup=keyboard)
+
 
 
 def error(update, context):
@@ -140,6 +160,7 @@ def main():
         CallbackQueryHandler(end_conv, pattern="^"+END_CONV+"$"),
         CallbackQueryHandler(list_ticket, pattern="^"+LIST_TICKET+"$"),
         CallbackQueryHandler(back_button, pattern="^"+BACK_BUTTON+"$"),
+        CallbackQueryHandler(check_ticket, pattern="^"+CHECK_TICKET+"$")
     ]
 
     conversation_handler = ConversationHandler(
