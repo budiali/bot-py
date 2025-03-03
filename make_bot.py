@@ -1,4 +1,6 @@
 import os
+import json
+import aiohttp
 from dotenv import load_dotenv
 import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -25,9 +27,10 @@ END_CONV,
 LIST_TICKET,
 CHECK_TICKET,
 BACK_BUTTON,
-) = map(chr, range(5))
+LIST_USERS,
+) = map(chr, range(6))
 
-SELECTING_ACTION = map(chr, range(5,6))
+SELECTING_ACTION = map(chr, range(6,7))
 
 async def initialize_user_data(update: Update, context: CallbackContext) -> str:
     if update.message:
@@ -68,6 +71,7 @@ async def main_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     button = [
         [InlineKeyboardButton("Approval Troubleshoot Ticket", callback_data=str(LIST_TICKET))],
         [InlineKeyboardButton("Check Troubleshoot Ticket", callback_data=str(CHECK_TICKET))],
+        [InlineKeyboardButton("List Users", callback_data=str(LIST_USERS))],
         [InlineKeyboardButton("Done", callback_data=str(END_CONV))]
     ]
     keyboard=InlineKeyboardMarkup(button)
@@ -92,6 +96,18 @@ async def list_ticket(update: Update, context: CallbackContext) -> str:
     await query.message.reply_text(text=f"Berikut Daftar Tiket Anda : \n\n{tickets}", reply_markup=keyboard)
 
     return SELECTING_ACTION
+
+async def list_users(update:Update, context:ContextTypes.DEFAULT_TYPE) -> str:
+    query = update.callback_query
+    await query.answer()
+    text_option="Anda memilih kategori: *List Users*"
+    await query.edit_message_text(text=text_option, parse_mode='Markdown')
+    result = await get_list_users(update, context)
+    button = [
+        [InlineKeyboardButton("Back", callback_data=str(BACK_BUTTON))]
+    ]
+    keyboard=InlineKeyboardMarkup(button)
+    await query.message.reply_text(text=f"{result}", reply_markup=keyboard)
 
 async def check_ticket(update:Update, context:ContextTypes.DEFAULT_TYPE) -> str:
     query = update.callback_query
@@ -146,7 +162,19 @@ async def send_animation(update: Update, context:ContextTypes.DEFAULT_TYPE) -> s
     
     await context.bot.send_animation(chat_id=chat_id, animation='https://cdnl.iconscout.com/lottie/premium/preview-watermark/website-repair-animation-download-in-lottie-json-gif-static-svg-file-formats--under-logo-web-configuration-maintenance-development-construction-pack-design-animations-6516026.mp4', reply_markup=keyboard)
 
-
+async def get_list_users(update:Update, context:ContextTypes.DEFAULT_TYPE) -> str:
+    url=f"https://reqres.in/api/users?page=2" 
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            try:
+                if response.status == 200:
+                    data = await response.json()
+                    # logger.info(f"Hasil data reqres >> {data}")
+                    return json.dumps(data, indent=4)
+                else:
+                    return f"Gagal ambil data" 
+            except Exception as e:
+                logger.info(f"Err {e}")
 
 def error(update, context):
     logger.warning(f'Update {update} caused error {context.error}')
@@ -160,7 +188,8 @@ def main():
         CallbackQueryHandler(end_conv, pattern="^"+END_CONV+"$"),
         CallbackQueryHandler(list_ticket, pattern="^"+LIST_TICKET+"$"),
         CallbackQueryHandler(back_button, pattern="^"+BACK_BUTTON+"$"),
-        CallbackQueryHandler(check_ticket, pattern="^"+CHECK_TICKET+"$")
+        CallbackQueryHandler(check_ticket, pattern="^"+CHECK_TICKET+"$"),
+        CallbackQueryHandler(list_users, pattern="^"+LIST_USERS+"$")
     ]
 
     conversation_handler = ConversationHandler(
