@@ -100,21 +100,32 @@ async def list_ticket(update: Update, context: CallbackContext) -> str:
 async def list_users(update:Update, context:ContextTypes.DEFAULT_TYPE) -> str:
     query = update.callback_query
     await query.answer()
-    text_option="Anda memilih kategori: *List Users*"
+    text_option = "Anda memilih kategori: *List Users*"
     await query.edit_message_text(text=text_option, parse_mode='Markdown')
     result = await get_list_users(update, context)
+
+    if isinstance(result, list):
+        user_data_text = ""
+        for user in result:
+            user_data_text += f"ID: {user['id']}\n"
+            user_data_text += f"Email: {user['email']}\n"
+            user_data_text += f"Full Name: {user['first_name']} {user['last_name']}\n"
+            user_data_text += f"Avatar: {user['avatar']}\n"
+            user_data_text += "-" * 40 + "\n"
+    else:
+        user_data_text = "Error: Expected a list of users."
+
     button = [
         [InlineKeyboardButton("Back", callback_data=str(BACK_BUTTON))]
     ]
-    keyboard=InlineKeyboardMarkup(button)
-    await query.message.reply_text(text=f"{result}", reply_markup=keyboard)
+    keyboard = InlineKeyboardMarkup(button)
+    await query.message.reply_text(text=user_data_text, reply_markup=keyboard)
 
 async def check_ticket(update:Update, context:ContextTypes.DEFAULT_TYPE) -> str:
     query = update.callback_query
     await query.answer()
     await initialize_user_data(update,context)
     user_dict = context.user_data['user_dict']
-    # logger.info(f"Context Data  Send Anim >>> {user_dict['chat_id']}")
     chat_id = user_dict['chat_id']
     
     text_option=f"Anda memilih kategori: *Check Troubleshoot Ticket*"
@@ -168,9 +179,10 @@ async def get_list_users(update:Update, context:ContextTypes.DEFAULT_TYPE) -> st
         async with session.get(url) as response:
             try:
                 if response.status == 200:
-                    data = await response.json()
-                    # logger.info(f"Hasil data reqres >> {data}")
-                    return json.dumps(data, indent=4)
+                    result = await response.json()
+                    data = result['data']
+                    # return json.dumps(data, indent=4)
+                    return data
                 else:
                     return f"Gagal ambil data" 
             except Exception as e:
@@ -179,7 +191,6 @@ async def get_list_users(update:Update, context:ContextTypes.DEFAULT_TYPE) -> st
 def error(update, context):
     logger.warning(f'Update {update} caused error {context.error}')
 
-# Fungsi utama untuk menjalankan bot
 def main():
     # Ganti 'YOUR_API_TOKEN' dengan token API yang Anda dapatkan dari BotFather
     application = Application.builder().token(TOKEN).build()
