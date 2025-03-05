@@ -3,7 +3,7 @@ import json
 import aiohttp
 from dotenv import load_dotenv
 import logging
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import ReplyKeyboardMarkup, Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackContext, ContextTypes, ConversationHandler, CallbackQueryHandler
 
 import pd_generate as gen
